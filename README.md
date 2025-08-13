@@ -1,4 +1,4 @@
-# # Python Prototype for Multi-Relational Algebra (MRA)
+# Python Prototype for Multi-Relational Algebra (MRA)
 
 This project provides a Python prototype of **Multi-Relational Algebra (MRA)**, an extension of classical relational algebra designed for complex, multi-granular data analytics. The implementation is based on the concepts presented in the academic paper, "Multi-Relational Algebra for Multi-Granular Data Analytics."
 
@@ -18,11 +18,13 @@ MRA introduces two new data abstractions to enable its powerful analytical capab
 
 ## Project Structure
 
-The project is organized into two distinct Python modules:
+The project is organized into a core algebra module and several example scripts:
 
-1.  **`mra_algebra.py`**: This file contains the core logic of the MRA prototype. It defines the `RelationSpace` and `SliceRelation` classes and implements all the fundamental MRA operators (`represent`, `flatten`, `slice_transform`, `slice_select`, `crawl`, etc.). This module is self-contained and can be imported into any project.
+1.  **`mra_algebra.py`**: This file contains the core logic of the MRA prototype. It defines the `RelationSpace` and `SliceRelation` classes and implements all the fundamental MRA operators (`represent`, `flatten`, `slice_transform`, `slice_select`, `crawl`, etc.). This module is self-contained and is imported by the example scripts.
 
-2.  **`ad_performance_analysis_example.py`**: This file provides a practical demonstration of the MRA algebra. It uses the components from `mra_algebra.py` to analyze a sample ad performance dataset, identifying devices that meet specific criteria (e.g., high cost and anomalous behavior).
+2.  **`ad_performance_analysis_example.py`**: This script provides a practical, end-to-end demonstration of the MRA algebra. It uses the high-level `crawl` operator to analyze a sample ad performance dataset.
+
+3.  **`represent_operator_example.py`**: This script provides a focused demonstration of the fundamental `represent` operator, showing how it transforms a `RelationSpace` into an entity-centric `SliceRelation`.
 
 ---
 
@@ -37,9 +39,9 @@ To run this project, you will need:
 
 ### Installation
 
-1.  **Clone or download the project files.** Make sure you have both `mra_algebra.py` and `ad_performance_analysis_example.py`.
+1.  **Clone or download the project files.** Make sure you have `mra_algebra.py` and the example scripts you wish to run.
 
-2.  **Place both files in the same directory.** This is necessary because the example script imports the algebra module directly.
+2.  **Place all files in the same directory.** This is necessary because the example scripts import the algebra module directly.
 
 3.  **Install pandas.** If you do not have pandas installed, you can install it using `pip` or `conda`:
 
@@ -53,27 +55,25 @@ To run this project, you will need:
 
 ---
 
-## How to Run
+## How to Run the Examples
 
-Once you have set up the project and installed the dependency, you can run the example from your terminal.
+Once you have set up the project and installed the dependency, you can run the examples from your terminal.
 
 1.  Navigate to the directory where you saved the files.
-2.  Execute the example script:
+2.  Execute the desired example script:
 
     ```bash
+    # To run the full, end-to-end analysis example
     python3 ad_performance_analysis_example.py
+
+    # To run the focused example on the 'represent' operator
+    python3 represent_operator_example.py
     ```
 
     *Note: If `python3` doesn't work, your system may use `python` as the command for Python 3.*
 
-## What the Example Does
+### What the Examples Demonstrate
 
-The `ad_performance_analysis_example.py` script walks through a common analytics task:
+-   **`ad_performance_analysis_example.py`**: This script walks through a common analytics task using the high-level `crawl` operator. It finds devices that meet two criteria: a total cost greater than 1000 and an anomalous daily Cost-Per-Click (CPC). The final output is a new `RelationSpace` containing only the filtered, relevant data.
 
-1.  It starts with a base table of ad performance data (cost, clicks, etc.).
-2.  It creates an initial `RelationSpace` containing aggregated data at different granularities (e.g., total cost per device, daily CPC per device).
-3.  It uses the powerful `crawl` operator to find devices that meet two criteria:
-    -   The total cost for the device is greater than 1000.
-    -   The device's daily Cost-Per-Click (CPC) time series shows anomalous behavior.
-4.  The final output is a new `RelationSpace` containing only the filtered, relevant data, demonstrating how MRA can systematically narrow down a large dataset to the most interesting insights.
-
+-   **`represent_operator_example.py`**: This script isolates the `represent` operator to clearly show its core function: transforming a collection of flat tables (`RelationSpace`) into a nested, entity-centric structure (`SliceRelation`). It's a great starting point for understanding the fundamental data restructuring at the heart of MRA.
