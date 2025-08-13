@@ -1,3 +1,4 @@
+"""An example analysis using MRA."""
 import pandas as pd
 from typing import Dict, List, Callable
 
