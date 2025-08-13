@@ -1,4 +1,4 @@
-"""An example to show the represent operator.""""
+"""An example to show the represent operator."""
 import pandas as pd
 from typing import Dict
 

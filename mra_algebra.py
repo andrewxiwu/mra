@@ -1,5 +1,3 @@
-"""The algebra module."""
-
 import pandas as pd
 import numpy as np
 from itertools import chain, combinations
@@ -121,23 +119,25 @@ def represent(
     """
     slice_relation = SliceRelation(relation_space.dimensions)
     all_regions = {} # {region_tuple: {feature_schema: df}}
+    space_dimensions = set(relation_space.dimensions)
 
     for region_schema in region_schemas:
         for feature_schema in feature_schemas:
-            required_cols = set(region_schema + feature_schema)
+            # 1. Combine region and feature schemas to get the required columns.
+            combined_schema = set(region_schema + feature_schema)
             
-            # Find candidate relations that contain all the necessary columns
-            candidate_relations = []
-            for relation in relation_space._relations.values():
-                if required_cols.issubset(relation.columns):
-                    candidate_relations.append(relation)
+            # 2. Intersect with the RelationSpace's dimensions to find the target dimensional key.
+            target_dim_set = combined_schema.intersection(space_dimensions)
+            
+            # 3. Find the unique table in the RelationSpace matching the dimensional key.
+            source_relation = relation_space.get_relation(list(target_dim_set))
 
-            if not candidate_relations:
+            if source_relation is None:
                 continue
             
-            # Heuristic: choose the candidate with the minimum number of columns
-            # to get the most specific relation.
-            source_relation = min(candidate_relations, key=lambda df: len(df.columns))
+            # Ensure the source relation actually contains all required columns for the feature.
+            if not combined_schema.issubset(source_relation.columns):
+                continue
 
             # Partition the source relation by the region schema
             for region_values, group in source_relation.groupby(region_schema):
