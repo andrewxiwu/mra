@@ -1,3 +1,5 @@
+"""The algebra module."""
+
 import pandas as pd
 import numpy as np
 from itertools import chain, combinations
