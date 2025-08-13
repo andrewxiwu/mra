@@ -122,17 +122,30 @@ def represent(
 
     for region_schema in region_schemas:
         for feature_schema in feature_schemas:
-            # Identify the correct source relation from the RelationSpace
-            # by matching dimensions.
-            target_dims = tuple(sorted(region_schema + feature_schema))
-            source_relation = relation_space.get_relation(list(target_dims))
+            required_cols = set(region_schema + feature_schema)
+            
+            # Find candidate relations that contain all the necessary columns
+            candidate_relations = []
+            for relation in relation_space._relations.values():
+                if required_cols.issubset(relation.columns):
+                    candidate_relations.append(relation)
 
-            if source_relation is None:
+            if not candidate_relations:
                 continue
+            
+            # Heuristic: choose the candidate with the minimum number of columns
+            # to get the most specific relation.
+            source_relation = min(candidate_relations, key=lambda df: len(df.columns))
 
             # Partition the source relation by the region schema
             for region_values, group in source_relation.groupby(region_schema):
-                region_dict = dict(zip(region_schema, [region_values] if len(region_schema) == 1 else region_values))
+                # Ensure region_values is iterable for zip
+                if not isinstance(region_values, tuple):
+                    region_values_tuple = (region_values,)
+                else:
+                    region_values_tuple = region_values
+
+                region_dict = dict(zip(region_schema, region_values_tuple))
                 region_key = tuple(sorted(region_dict.items()))
 
                 # Extract the feature table
