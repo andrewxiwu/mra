@@ -6,6 +6,7 @@ from itertools import chain, combinations
 # Assuming you have a module named 'mra_data' with these classes defined.
 # This file should be in the same directory.
 from mra_data import RelationSpace, SliceRelation, RelationSchema, create_relation_tuple, RelationTuple
+from slice_transformation import SliceTransformationBase
 
 # ==============================================================================
 # Type Alias for Data
@@ -96,7 +97,7 @@ class CreateRelationSpaceByCube(MraOperatorBase):
             agg_df = data.agg(self.aggregations).to_frame().T if not group_list else data.groupby(group_list).agg(self.aggregations).reset_index()
             dimensional_schema = RelationSchema(group_list)
             relation_space.add_relation(agg_df, dimensional_schema)
-            
+
         return relation_space
 
 
@@ -129,10 +130,10 @@ class Represent(MraOperatorBase):
 
                 if relation_to_partition is None:
                     continue
-                
+
                 region_cols = list(r_schema.attributes)
                 feature_cols = list(f_schema.attributes)
-                
+
                 # Ensure all required columns exist in the dataframe
                 if not all(col in relation_to_partition.columns for col in region_cols + feature_cols):
                     continue
@@ -143,11 +144,55 @@ class Represent(MraOperatorBase):
                     # Ensure region_values is always a tuple, even for a single column
                     if not isinstance(region_values, tuple):
                         region_values = (region_values,)
-                    
+
                     region_dict = dict(zip(region_cols, region_values))
                     region_tuple = create_relation_tuple(region_dict)
-                    
+
                     feature_data = group_df[feature_cols].copy().reset_index(drop=True)
                     slice_relation.add_slice_tuple(region_tuple, f_schema, feature_data)
-                    
+
         return slice_relation
+
+
+class SliceTransform(MraOperatorBase):
+    """
+    Transforms feature tables within a SliceRelation by applying a sequence
+    of slice transformations.
+    """
+    def __init__(self, slice_transformations: List[SliceTransformationBase], dimensions: RelationSchema):
+        self.slice_transformations = slice_transformations
+        self.dimensions = dimensions
+
+    def _execute(self, data: SliceRelation) -> SliceRelation:
+        if not isinstance(data, SliceRelation):
+            raise TypeError("SliceTransform expects a SliceRelation object.")
+
+        print("  > Transforming slices...")
+        new_slice_relation = SliceRelation(dimensions=self.dimensions)
+
+        # Create a dictionary for quick lookup of transformations by their required input schema
+        transform_map = {t.feature_schema: t for t in self.slice_transformations}
+
+        transformed_schemas = set(transform_map.keys())
+
+        for region, features in data.data.items():
+            # Keep track of which feature tables for this region have been transformed
+            processed_schemas = set()
+
+            for feature_schema, feature_df in features.items():
+                # Apply transformation if one is defined for this schema
+                if feature_schema in transform_map:
+                    transformation = transform_map[feature_schema]
+                    transformed_df = transformation(feature_df.copy())
+
+                    # The output schema is determined by the columns of the new DataFrame
+                    output_schema = RelationSchema(list(transformed_df.columns))
+                    new_slice_relation.add_slice_tuple(region, output_schema, transformed_df)
+                    processed_schemas.add(feature_schema)
+
+            # Carry over any feature tables that were not part of a transformation
+            for feature_schema, feature_df in features.items():
+                if feature_schema not in processed_schemas:
+                    new_slice_relation.add_slice_tuple(region, feature_schema, feature_df.copy())
+
+        return new_slice_relation
