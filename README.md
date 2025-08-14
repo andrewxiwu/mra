@@ -1,79 +1,104 @@
-# Python Prototype for Multi-Relational Algebra (MRA)
+Multi-Relational Algebra (MRA) Framework
+This project provides a Python implementation of the concepts described in the paper "Multi-Relational Algebra for Multi-Granular Data Analytics." It introduces a set of data structures and composable operators that allow for complex, multi-granular data analysis in a clean and declarative way.
 
-This project provides a Python prototype of **Multi-Relational Algebra (MRA)**, an extension of classical relational algebra designed for complex, multi-granular data analytics. The implementation is based on the concepts presented in the academic paper, "Multi-Relational Algebra for Multi-Granular Data Analytics."
+Core Concepts
+The framework is built on two key data abstractions and a series of operators that transform them.
 
-The core idea is to move beyond traditional flat-table analysis by introducing data structures and operators that can handle collections of relations and nested, per-entity features in a structured and composable way.
+Data Structures
+RelationSpace: A collection of relations (pandas DataFrames) indexed by their dimensional schemas. This is the primary structure for holding data at different levels of granularity.
 
----
+SliceRelation: A structure that organizes data around entities (called "regions"), where each region is associated with one or more relation-valued features.
 
-## Core Concepts
+Operators
+The framework uses a pipeline-based approach where operators can be chained together using the | symbol.
 
-MRA introduces two new data abstractions to enable its powerful analytical capabilities:
+CreateRelationSpaceByCube: Creates a RelationSpace by performing a GROUP BY CUBE operation on a DataFrame.
 
--   **`RelationSpace`**: A container for managing a collection of relations (represented here as pandas DataFrames) defined at different granularities. It uses a "dimensional schema" to uniquely identify each relation, avoiding the need to manage numerous individual tables manually.
+Represent: Transforms a RelationSpace into a SliceRelation.
 
--   **`SliceRelation`**: A nested data structure that organizes data around specific entities (called "regions"). Each row in a `SliceRelation` is a "slice tuple" containing a region and its associated set of relation-valued features. This structure is ideal for performing complex, per-entity analyses like time-series anomaly detection or statistical modeling.
+SliceTransform: Applies a series of transformations to the feature tables within a SliceRelation.
 
----
+SliceSelect: Filters the slice tuples in a SliceRelation based on a predicate.
 
-## Project Structure
+Flatten: Converts a SliceRelation back into a RelationSpace.
 
-The project is organized into a core algebra module and several example scripts:
+Crawl: A "mega-operator" that composes Represent, SliceTransform, SliceSelect, and Flatten into a single, powerful operation.
 
-1.  **`mra_algebra.py`**: This file contains the core logic of the MRA prototype. It defines the `RelationSpace` and `SliceRelation` classes and implements all the fundamental MRA operators (`represent`, `flatten`, `slice_transform`, `slice_select`, `crawl`, etc.). This module is self-contained and is imported by the example scripts.
+Project Structure
+The project is organized into a main package and two sub-packages for examples.
 
-2.  **`ad_performance_analysis_example.py`**: This script provides a practical, end-to-end demonstration of the MRA algebra. It uses the high-level `crawl` operator to analyze a sample ad performance dataset.
+.
+├── mra_data.py                 # Core data structures (RelationSpace, SliceRelation)
+├── mra_operators.py            # All MRA operators (Create..., Represent, Crawl, etc.)
+├── slice_transformation.py     # Base class for slice transformations
+├── ratio_transformation.py     # Example of a concrete transformation
+├── __init__.py                 # Makes the root directory a package
+│
+├── mra_data_examples/
+│   ├── __init__.py
+│   └── ratio_transformation_example.py
+│
+└── mra_pipeline_examples/
+    ├── __init__.py
+    ├── represent_example.py
+    ├── slice_select_example.py
+    ├── slice_transform_example.py
+    ├── flatten_example.py
+    └── crawl_example.py
 
-3.  **`represent_operator_example.py`**: This script provides a focused demonstration of the fundamental `represent` operator, showing how it transforms a `RelationSpace` into an entity-centric `SliceRelation`.
+How to Run Examples
+To run any of the example scripts, you must execute them as modules from the root directory of the project. This ensures that all internal imports (e.g., from mra_data import ...) work correctly.
 
----
+Do not cd into the example directories to run the files.
 
-## Getting Started
+Example Command
+From the root mra directory, run the following command:
 
-### Prerequisites
+# To run the main crawl_example.py
+python3 -m mra_pipeline_examples.crawl_example
 
-To run this project, you will need:
+Similarly, to run other examples:
 
--   **Python 3**: The code is written for Python 3. On many systems, the command to run it is `python3`.
--   **pandas**: This is the only external library required. It is used for all data manipulation.
+python3 -m mra_pipeline_examples.flatten_example
+python3 -m mra_data_examples.ratio_transformation_example
 
-### Installation
+Basic Usage
+The following is a brief example of how to build and execute a pipeline.
 
-1.  **Clone or download the project files.** Make sure you have `mra_algebra.py` and the example scripts you wish to run.
+import pandas as pd
+from mra_data import RelationSchema
+from mra_operators import CreateRelationSpaceByCube, Crawl
+from ratio_transformation import RatioTransformation
 
-2.  **Place all files in the same directory.** This is necessary because the example scripts import the algebra module directly.
+# 1. Your initial data
+df = pd.DataFrame(...)
 
-3.  **Install pandas.** If you do not have pandas installed, you can install it using `pip` or `conda`:
+# 2. Define the components for your analysis
+cost_per_click = RatioTransformation(
+    numerator_col='cost',
+    denominator_col='clicks',
+    output_col='cost_per_click'
+)
 
-    ```bash
-    # Using pip
-    pip install pandas
+def my_predicate(region, features):
+    # ... logic to filter slices ...
+    return True
 
-    # Or, if you use Anaconda/Miniconda
-    conda install pandas
-    ```
+# 3. Build the pipeline using the | operator
+pipeline = (
+    CreateRelationSpaceByCube(
+        grouping_keys=['device', 'browser'],
+        aggregations={'clicks': 'sum', 'cost': 'sum'}
+    ) |
+    Crawl(
+        region_schemas=[RelationSchema(['device'])],
+        slice_transformations=[cost_per_click],
+        predicate_func=my_predicate,
+        dimensions=RelationSchema(['device', 'browser'])
+    )
+)
 
----
+# 4. Execute the pipeline
+final_result = pipeline(df)
 
-## How to Run the Examples
-
-Once you have set up the project and installed the dependency, you can run the examples from your terminal.
-
-1.  Navigate to the directory where you saved the files.
-2.  Execute the desired example script:
-
-    ```bash
-    # To run the full, end-to-end analysis example
-    python3 ad_performance_analysis_example.py
-
-    # To run the focused example on the 'represent' operator
-    python3 represent_operator_example.py
-    ```
-
-    *Note: If `python3` doesn't work, your system may use `python` as the command for Python 3.*
-
-### What the Examples Demonstrate
-
--   **`ad_performance_analysis_example.py`**: This script walks through a common analytics task using the high-level `crawl` operator. It finds devices that meet two criteria: a total cost greater than 1000 and an anomalous daily Cost-Per-Click (CPC). The final output is a new `RelationSpace` containing only the filtered, relevant data.
-
--   **`represent_operator_example.py`**: This script isolates the `represent` operator to clearly show its core function: transforming a collection of flat tables (`RelationSpace`) into a nested, entity-centric structure (`SliceRelation`). It's a great starting point for understanding the fundamental data restructuring at the heart of MRA.
+print(final_result)
