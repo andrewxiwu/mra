@@ -86,7 +86,15 @@ class SliceRelation:
     - The outer dictionary maps a RelationTuple to its feature tables.
     - The inner dictionary maps a RelationSchema to a specific feature DataFrame.
     """
-    def __init__(self):
+    def __init__(self, dimensions: RelationSchema):
+        """
+        Initializes the SliceRelation.
+
+        Args:
+            dimensions: The dimension set for the SliceRelation, which is crucial
+                        for operations like Flatten.
+        """
+        self.dimensions = dimensions
         self.data: Dict[RelationTuple, Dict[RelationSchema, pd.DataFrame]] = {}
 
     def add_slice_tuple(self, region: RelationTuple, feature_schema: RelationSchema, feature_data: pd.DataFrame):
@@ -97,7 +105,7 @@ class SliceRelation:
 
     def __repr__(self):
         """Provides a string representation of the SliceRelation."""
-        rep = "SliceRelation\n"
+        rep = f"SliceRelation(Dimensions: {self.dimensions.attributes})\n"
         rep += "="*40 + "\n"
         if not self.data:
             return rep + "Empty SliceRelation"

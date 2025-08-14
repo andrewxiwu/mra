@@ -114,7 +114,7 @@ class Represent(MraOperatorBase):
             raise TypeError("Represent expects a RelationSpace object.")
 
         print(f"  > Representing RelationSpace into slices...")
-        slice_relation = SliceRelation()
+        slice_relation = SliceRelation(dimensions=data.dimensions)
 
         # Iterate through every combination of region and feature schemas
         for r_schema in self.region_schemas:

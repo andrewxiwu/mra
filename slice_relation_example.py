@@ -9,7 +9,7 @@ def main():
     print("="*50 + "\n")
 
     # 1. Create an empty SliceRelation instance.
-    slice_relation = SliceRelation()
+    slice_relation = SliceRelation(dimensions=RelationSchema(['Device', 'Date']))
     print("--- 1. Created an empty SliceRelation ---")
     print(slice_relation)
 
