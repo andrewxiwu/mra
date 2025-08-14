@@ -222,3 +222,92 @@ class SliceSelect(MraOperatorBase):
                     new_slice_relation.add_slice_tuple(region, feature_schema, feature_df)
 
         return new_slice_relation
+
+
+class Flatten(MraOperatorBase):
+    """
+    Converts a SliceRelation back into a RelationSpace.
+    """
+    def __init__(self, dimensions: RelationSchema):
+        self.dimensions = dimensions
+
+    def _execute(self, data: SliceRelation) -> RelationSpace:
+        if not isinstance(data, SliceRelation):
+            raise TypeError("Flatten expects a SliceRelation object.")
+
+        print("  > Flattening SliceRelation to RelationSpace...")
+        new_relation_space = RelationSpace(dimensions=self.dimensions)
+
+        # Group all feature tables by their region to handle merges correctly.
+        relations_to_merge: Dict[RelationTuple, List[pd.DataFrame]] = {}
+
+        for region, features in data.data.items():
+            if region not in relations_to_merge:
+                relations_to_merge[region] = []
+
+            # Add all feature tables for this region to a list
+            relations_to_merge[region].extend(features.values())
+
+        # Process each region's collected feature tables
+        for region, dfs_to_merge in relations_to_merge.items():
+            region_df = pd.DataFrame([dict(region)], index=[0])
+            region_schema = RelationSchema(list(region_df.columns))
+
+            # Start with the region dataframe
+            final_df = region_df
+
+            # Merge all feature tables for this region together
+            if dfs_to_merge:
+                # Use a cross join for each feature table since they don't share columns
+                # besides the implicit region key which is already handled.
+                for feature_df in dfs_to_merge:
+                    if not feature_df.empty:
+                        final_df = final_df.merge(feature_df, how='cross')
+
+            # Add the fully combined dataframe to the new relation space
+            new_relation_space.add_relation(final_df, region_schema)
+
+        return new_relation_space
+
+
+class Crawl(MraOperatorBase):
+    """
+    A "mega-operator" that composes Represent, SliceTransform, SliceSelect,
+    and Flatten into a single, convenient operation by building an internal pipeline.
+    """
+    def __init__(self, region_schemas: List[RelationSchema],
+                 slice_transformations: List[SliceTransformationBase],
+                 predicate_func: Callable[[RelationTuple, Dict[RelationSchema, pd.DataFrame]], bool],
+                 dimensions: RelationSchema):
+        self.region_schemas = region_schemas
+        self.slice_transformations = slice_transformations
+        self.predicate_func = predicate_func
+        self.dimensions = dimensions
+
+    def _execute(self, data: RelationSpace) -> RelationSpace:
+        if not isinstance(data, RelationSpace):
+            raise TypeError("Crawl expects a RelationSpace as its initial input.")
+
+        # Step 1: Determine the feature schemas required by the transformations.
+        feature_schemas = [t.feature_schema for t in self.slice_transformations]
+
+        # Build the internal pipeline using the | operator
+        internal_pipeline = (
+            Represent(
+                region_schemas=self.region_schemas,
+                feature_schemas=feature_schemas
+            ) |
+            SliceTransform(
+                slice_transformations=self.slice_transformations,
+                dimensions=self.dimensions
+            ) |
+            SliceSelect(
+                predicate_func=self.predicate_func
+            ) |
+            Flatten(
+                dimensions=self.dimensions
+            )
+        )
+
+        # Execute the composed pipeline on the input data
+        return internal_pipeline(data)
