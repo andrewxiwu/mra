@@ -196,3 +196,29 @@ class SliceTransform(MraOperatorBase):
                     new_slice_relation.add_slice_tuple(region, feature_schema, feature_df.copy())
 
         return new_slice_relation
+
+
+class SliceSelect(MraOperatorBase):
+    """
+    Filters a SliceRelation based on a predicate function that evaluates
+    each slice tuple (region and its features).
+    """
+    def __init__(self, predicate_func: Callable[[RelationTuple, Dict[RelationSchema, pd.DataFrame]], bool]):
+        self.predicate_func = predicate_func
+
+    def _execute(self, data: SliceRelation) -> SliceRelation:
+        if not isinstance(data, SliceRelation):
+            raise TypeError("SliceSelect expects a SliceRelation object.")
+
+        print(f"  > Selecting slices...")
+        # The new SliceRelation inherits dimensions from the input.
+        new_slice_relation = SliceRelation(dimensions=data.dimensions)
+
+        for region, features in data.data.items():
+            # The predicate function receives the entire slice tuple to make a decision
+            if self.predicate_func(region, features):
+                # If the predicate is true, add the entire slice tuple to the new relation
+                for feature_schema, feature_df in features.items():
+                    new_slice_relation.add_slice_tuple(region, feature_schema, feature_df)
+
+        return new_slice_relation
