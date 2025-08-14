@@ -1,8 +1,6 @@
-"""MRA operators."""
-
 import pandas as pd
 from abc import ABC, abstractmethod
-from typing import Union, List, Callable, Dict, Any
+from typing import Union, List, Callable, Dict, Any, Tuple
 from itertools import chain, combinations
 
 # Assuming you have a module named 'mra_data' with these classes defined.
@@ -48,10 +46,6 @@ class MraOperatorBase(ABC):
             return Pipeline([self] + other.operators)
         return Pipeline([self, other])
 
-    def __ror__(self, other: MraData) -> MraData:
-        """Overloads the right-sided `|` operator to start a pipeline."""
-        return self(other)
-
 
 class Pipeline(MraOperatorBase):
     """
@@ -93,25 +87,13 @@ class CreateRelationSpaceByCube(MraOperatorBase):
         if not isinstance(data, pd.DataFrame):
             raise TypeError("CreateRelationSpaceByCube expects a pandas DataFrame.")
 
-        # The dimensions of the space are the keys used for the cube.
         relation_space = RelationSpace(dimensions=RelationSchema(self.grouping_keys))
-
-        # Generate the power set of grouping keys to simulate a CUBE.
-        # This includes the empty set for the grand total.
         power_set = chain.from_iterable(combinations(self.grouping_keys, r) for r in range(len(self.grouping_keys) + 1))
 
         print(f"  > Generating cube for keys: {self.grouping_keys}")
         for group in power_set:
             group_list = list(group)
-            
-            if not group_list:
-                # Handle the grand total (empty grouping set)
-                agg_df = data.agg(self.aggregations).to_frame().T
-            else:
-                # Handle regular grouping sets
-                agg_df = data.groupby(group_list).agg(self.aggregations).reset_index()
-
-            # The dimensional schema for each relation is its grouping key.
+            agg_df = data.agg(self.aggregations).to_frame().T if not group_list else data.groupby(group_list).agg(self.aggregations).reset_index()
             dimensional_schema = RelationSchema(group_list)
             relation_space.add_relation(agg_df, dimensional_schema)
             
@@ -121,51 +103,51 @@ class CreateRelationSpaceByCube(MraOperatorBase):
 class Represent(MraOperatorBase):
     """
     Transforms a RelationSpace into a SliceRelation by partitioning relations
-    based on a specified region key.
+    based on specified region and feature schemas.
     """
-    def __init__(self, region_key: str):
-        self.region_key = region_key
+    def __init__(self, region_schemas: List[RelationSchema], feature_schemas: List[RelationSchema]):
+        self.region_schemas = region_schemas
+        self.feature_schemas = feature_schemas
 
     def _execute(self, data: RelationSpace) -> SliceRelation:
         if not isinstance(data, RelationSpace):
             raise TypeError("Represent expects a RelationSpace object.")
 
-        print(f"  > Representing RelationSpace into slices by '{self.region_key}'")
+        print(f"  > Representing RelationSpace into slices...")
         slice_relation = SliceRelation()
-        
-        for _, df in data._relations.items():
-            if self.region_key in df.columns:
-                feature_cols = [col for col in df.columns if col != self.region_key]
-                feature_schema = RelationSchema(feature_cols)
 
-                grouped = df.groupby(self.region_key)
-                for region_value, feature_df_group in grouped:
-                    region_tuple = create_relation_tuple({self.region_key: region_value})
-                    feature_data = feature_df_group[feature_cols].copy().reset_index(drop=True)
+        # Iterate through every combination of region and feature schemas
+        for r_schema in self.region_schemas:
+            for f_schema in self.feature_schemas:
+                # Determine the target dimensional schema for lookup in the RelationSpace
+                # As per the paper: T = r_schema U f_schema, K = T intersect D
+                target_attributes = r_schema.attributes + f_schema.attributes
+                target_dim_attributes = [attr for attr in target_attributes if attr in data.dimensions.attributes]
+                target_dim_schema = RelationSchema(target_dim_attributes)
+
+                relation_to_partition = data.get_relation(target_dim_schema)
+
+                if relation_to_partition is None:
+                    continue
+                
+                region_cols = list(r_schema.attributes)
+                feature_cols = list(f_schema.attributes)
+                
+                # Ensure all required columns exist in the dataframe
+                if not all(col in relation_to_partition.columns for col in region_cols + feature_cols):
+                    continue
+
+                # Group by the region columns to create slices
+                grouped = relation_to_partition.groupby(region_cols)
+                for region_values, group_df in grouped:
+                    # Ensure region_values is always a tuple, even for a single column
+                    if not isinstance(region_values, tuple):
+                        region_values = (region_values,)
                     
-                    slice_relation.add_slice_tuple(region_tuple, feature_schema, feature_data)
+                    region_dict = dict(zip(region_cols, region_values))
+                    region_tuple = create_relation_tuple(region_dict)
+                    
+                    feature_data = group_df[feature_cols].copy().reset_index(drop=True)
+                    slice_relation.add_slice_tuple(region_tuple, f_schema, feature_data)
                     
         return slice_relation
-
-
-class SliceSelect(MraOperatorBase):
-    """
-    Filters a SliceRelation based on a predicate function that evaluates
-    each slice tuple (region and its features).
-    """
-    def __init__(self, predicate_func: Callable[[RelationTuple, dict], bool]):
-        self.predicate_func = predicate_func
-
-    def _execute(self, data: SliceRelation) -> SliceRelation:
-        if not isinstance(data, SliceRelation):
-            raise TypeError("SliceSelect expects a SliceRelation object.")
-        
-        print(f"  > Selecting slices...")
-        new_slice_relation = SliceRelation()
-        for region, features in data.data.items():
-            if self.predicate_func(region, features):
-                for feature_schema, feature_df in features.items():
-                    new_slice_relation.add_slice_tuple(region, feature_schema, feature_df)
-                    
-        return new_slice_relation
-

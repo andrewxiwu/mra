@@ -9,31 +9,43 @@ def run_example():
     """
     Demonstrates a pipeline using MRA operators.
     """
-    # 1. Create some sample data (a pandas DataFrame)
-    sample_data = pd.DataFrame({
-        'device': ['Pixel', 'Pixel', 'iPhone', 'Surface', 'iPhone'],
-        'browser': ['Chrome', 'Firefox', 'Safari', 'Edge', 'Chrome'],
-        'clicks': [100, 50, 200, 150, 300],
-        'cost': [10, 8, 25, 22, 40]
-    })
+    # 1. Create some sample data (a pandas DataFrame) from a list of rows
+    data_rows = [
+        # device,  browser,   clicks, cost
+        ['Pixel',   'Chrome',   100,    10],
+        ['Pixel',   'Firefox',   50,     8],
+        ['iPhone',  'Safari',   200,    25],
+        ['Surface', 'Edge',     150,    22],
+        ['iPhone',  'Chrome',   300,    40]
+    ]
+    sample_data = pd.DataFrame(data_rows, columns=['device', 'browser', 'clicks', 'cost'])
+    
     print("----------- Initial DataFrame -----------")
     print(sample_data.to_string(index=False))
     print("\n" + "="*50 + "\n")
 
     # 2. Define a pipeline of operations using the `|` operator
     #    - Create a RelationSpace by cubing on 'device' and 'browser'.
-    #    - Represent the resulting space as a SliceRelation, with 'device' as the region.
+    #    - Represent the resulting space as a SliceRelation.
     pipeline = (
         CreateRelationSpaceByCube(
             grouping_keys=['device', 'browser'],
             aggregations={'clicks': 'sum', 'cost': 'sum'}
         ) |
-        Represent(region_key='device')
+        Represent(
+            region_schemas=[
+                RelationSchema(['device']), 
+                RelationSchema(['browser'])
+            ],
+            feature_schemas=[
+                RelationSchema(['clicks', 'cost'])
+            ]
+        )
     )
 
-    # 3. Execute the pipeline on the data
+    # 3. Execute the pipeline on the data by calling the pipeline object
     print("----------- Executing Pipeline -----------")
-    final_result = sample_data | pipeline
+    final_result = pipeline(sample_data)
     
     print("\n" + "="*50 + "\n")
     print("----------- Final Result (SliceRelation) -----------")
