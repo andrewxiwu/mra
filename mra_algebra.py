@@ -3,41 +3,6 @@ import numpy as np
 from itertools import chain, combinations
 from typing import List, Dict, Any, Callable, Tuple
 
-# -----------------------------------------------------------------------------
-# MRA Data Structures
-# -----------------------------------------------------------------------------
-
-class RelationSpace:
-    """
-    Represents a RelationSpace, a collection of relations (DataFrames)
-    indexed by their dimensional schema. This is analogous to Definition 1
-    in the provided paper. The dimensions are used to identify and retrieve
-    specific relations within the space.
-    """
-    def __init__(self, dimensions: List[str]):
-        self.dimensions = tuple(sorted(dimensions))
-        self._relations: Dict[Tuple[str, ...], pd.DataFrame] = {}
-
-    def add_relation(self, relation: pd.DataFrame, dimensional_schema: List[str]):
-        """Adds a relation to the space, indexed by its dimensional schema."""
-        key = tuple(sorted(dimensional_schema))
-        self._relations[key] = relation
-
-    def get_relation(self, dimensional_schema: List[str]) -> pd.DataFrame:
-        """Retrieves a relation by its dimensional schema."""
-        key = tuple(sorted(dimensional_schema))
-        return self._relations.get(key)
-
-    def __repr__(self):
-        """Provides a string representation of the RelationSpace."""
-        rep = f"RelationSpace(Dimensions: {self.dimensions})\n"
-        rep += "="*40 + "\n"
-        if not self._relations:
-            return rep + "Empty RelationSpace"
-        for dims, df in self._relations.items():
-            rep += f"--> Relation with Dimensions: {dims}\n"
-            rep += df.to_string(index=False) + "\n\n"
-        return rep
 
 class SliceRelation:
     """
