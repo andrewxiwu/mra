@@ -40,6 +40,9 @@ class RelationSpace:
         """Adds a relation to the space, indexed by its dimensional schema."""
         self._relations[dimensional_schema] = relation
 
+        # TODO: We need to check that the relation schema intersects with dimensions
+        # will be exactly the `dimensional_schema`.
+
     def get_relation(self, dimensional_schema: RelationSchema) -> pd.DataFrame:
         """Retrieves a relation by its dimensional schema."""
         return self._relations.get(dimensional_schema)

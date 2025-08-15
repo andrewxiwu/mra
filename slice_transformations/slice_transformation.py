@@ -8,12 +8,12 @@ from mra_data import RelationSchema
 class SliceTransformationBase(ABC):
     """
     Abstract Base Class for all slice transformations (the tau function in the paper).
-
-    A slice transformation is a function that maps a feature table (DataFrame)
-    to another feature table (DataFrame). Subclasses must define the specific
-    parameters they require in their own initializer and must implement the
-    `feature_schema` property and the `__call__` method.
     """
+
+    def __init__(self):
+        # Reference data.
+        self._reference_data: Optional[pd.DataFrame] = None
+
     @property
     @abstractmethod
     def feature_schema(self) -> RelationSchema:
@@ -22,6 +22,32 @@ class SliceTransformationBase(ABC):
         This must be implemented by all subclasses.
         """
         pass
+
+    @property
+    def require_reference_data(self) -> bool:
+        """
+        Specifies whether this transformation requires reference data.
+        Subclasses should override this property to return True if they
+        depend on reference data.
+        """
+        return False
+
+    @property
+    def reference_data(self) -> Optional[pd.DataFrame]:
+        """The reference data available to the transformation."""
+        return self._reference_data
+
+    @reference_data.setter
+    def reference_data(self, data: Optional[pd.DataFrame]):
+        """
+        Sets the reference data for the transformation.
+
+        Raises:
+            ValueError: If reference data is required but `None` is provided.
+        """
+        if self.require_reference_data and data is None:
+            raise ValueError(f"The transformation '{self.__class__.__name__}' requires reference data, but none was provided.")
+        self._reference_data = data
 
     @abstractmethod
     def __call__(self, data: pd.DataFrame) -> pd.DataFrame:

@@ -4,7 +4,7 @@ import numpy as np
 # Import the MRA operators and data structures
 from mra_operators import CreateRelationSpaceByCube, Represent, SliceTransform
 from mra_data import RelationSpace, SliceRelation, RelationSchema
-from ratio_transformation import RatioTransformation
+from slice_transformations.ratio_transformation import RatioTransformation
 
 def run_transform_example():
     """
