@@ -352,6 +352,9 @@ class Crawl(MraOperatorBase):
             SliceSelect(
                 predicate_func=self.predicate_func
             ) |
+            SliceProject(
+                region_schemas=self.region_schemas
+            ) |
             Flatten(
                 dimensions=self.dimensions
             )
