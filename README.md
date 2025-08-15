@@ -1,104 +1,73 @@
-Multi-Relational Algebra (MRA) Framework
-This project provides a Python implementation of the concepts described in the paper "Multi-Relational Algebra for Multi-Granular Data Analytics." It introduces a set of data structures and composable operators that allow for complex, multi-granular data analysis in a clean and declarative way.
+# Python Prototype for Multi-Relational Algebra (MRA)
 
-Core Concepts
-The framework is built on two key data abstractions and a series of operators that transform them.
+This project provides a Python prototype of **Multi-Relational Algebra (MRA)**, an extension of classical relational algebra designed for complex, multi-granular data analytics. The implementation is based on the concepts presented in the academic paper, "Multi-Relational Algebra for Multi-Granular Data Analytics."
 
-Data Structures
-RelationSpace: A collection of relations (pandas DataFrames) indexed by their dimensional schemas. This is the primary structure for holding data at different levels of granularity.
+The core idea is to move beyond traditional flat-table analysis by introducing data structures and operators that can handle collections of relations and nested, per-entity features in a structured and composable way.
 
-SliceRelation: A structure that organizes data around entities (called "regions"), where each region is associated with one or more relation-valued features.
+---
 
-Operators
-The framework uses a pipeline-based approach where operators can be chained together using the | symbol.
+## Core Concepts
 
-CreateRelationSpaceByCube: Creates a RelationSpace by performing a GROUP BY CUBE operation on a DataFrame.
+MRA introduces two new data abstractions to enable its powerful analytical capabilities:
 
-Represent: Transforms a RelationSpace into a SliceRelation.
+-   **`RelationSpace`**: A container for managing a collection of relations (represented here as pandas DataFrames) defined at different granularities. It uses a "dimensional schema" to uniquely identify each relation, avoiding the need to manage numerous individual tables manually.
 
-SliceTransform: Applies a series of transformations to the feature tables within a SliceRelation.
+-   **`SliceRelation`**: A nested data structure that organizes data around specific entities (called "regions"). Each row in a `SliceRelation` is a "slice tuple" containing a region and its associated set of relation-valued features. This structure is ideal for performing complex, per-entity analyses like time-series anomaly detection or statistical modeling.
 
-SliceSelect: Filters the slice tuples in a SliceRelation based on a predicate.
+---
 
-Flatten: Converts a SliceRelation back into a RelationSpace.
+## Project Structure
 
-Crawl: A "mega-operator" that composes Represent, SliceTransform, SliceSelect, and Flatten into a single, powerful operation.
+The project is organized into two core modules and several example scripts:
 
-Project Structure
-The project is organized into a main package and two sub-packages for examples.
+1.  **`mra_data.py`**: This file contains the core data structures of the MRA prototype. It defines the `RelationSpace` and `SliceRelation` classes, as well as the underlying types like `RelationSchema` and `RelationTuple`.
 
-.
-├── mra_data.py                 # Core data structures (RelationSpace, SliceRelation)
-├── mra_operators.py            # All MRA operators (Create..., Represent, Crawl, etc.)
-├── slice_transformation.py     # Base class for slice transformations
-├── ratio_transformation.py     # Example of a concrete transformation
-├── __init__.py                 # Makes the root directory a package
-│
-├── mra_data_examples/
-│   ├── __init__.py
-│   └── ratio_transformation_example.py
-│
-└── mra_pipeline_examples/
-    ├── __init__.py
-    ├── represent_example.py
-    ├── slice_select_example.py
-    ├── slice_transform_example.py
-    ├── flatten_example.py
-    └── crawl_example.py
+2.  **`mra_operators.py`**: This file contains the logic for all the MRA operators (`represent`, `flatten`, `slice_transform`, `slice_select`, etc.). It is designed to support a chainable, pipe-based (`|`) syntax for creating readable analytical workflows.
 
-How to Run Examples
-To run any of the example scripts, you must execute them as modules from the root directory of the project. This ensures that all internal imports (e.g., from mra_data import ...) work correctly.
+3.  **Example Scripts**: Files like `ad_performance_analysis_example.py` and `relation_space_example.py` provide practical demonstrations of how to use the data structures and operators to perform analysis.
 
-Do not cd into the example directories to run the files.
+---
 
-Example Command
-From the root mra directory, run the following command:
+## Getting Started
 
-# To run the main crawl_example.py
-python3 -m mra_pipeline_examples.crawl_example
+### Prerequisites
 
-Similarly, to run other examples:
+To run this project, you will need:
 
-python3 -m mra_pipeline_examples.flatten_example
-python3 -m mra_data_examples.ratio_transformation_example
+-   **Python 3**: The code is written for Python 3. On many systems, the command to run it is `python3`.
+-   **pandas**: This is the only external library required. It is used for all data manipulation.
 
-Basic Usage
-The following is a brief example of how to build and execute a pipeline.
+### Installation
 
-import pandas as pd
-from mra_data import RelationSchema
-from mra_operators import CreateRelationSpaceByCube, Crawl
-from ratio_transformation import RatioTransformation
+1.  **Clone or download the project files.** Make sure you have `mra_data.py`, `mra_operators.py`, and the example scripts you wish to run.
 
-# 1. Your initial data
-df = pd.DataFrame(...)
+2.  **Place all files in the same directory.** This is necessary because the example scripts and operator module import the data module directly.
 
-# 2. Define the components for your analysis
-cost_per_click = RatioTransformation(
-    numerator_col='cost',
-    denominator_col='clicks',
-    output_col='cost_per_click'
-)
+3.  **Install pandas.** If you do not have pandas installed, you can install it using `pip` or `conda`:
 
-def my_predicate(region, features):
-    # ... logic to filter slices ...
-    return True
+    ```bash
+    # Using pip
+    pip install pandas
 
-# 3. Build the pipeline using the | operator
-pipeline = (
-    CreateRelationSpaceByCube(
-        grouping_keys=['device', 'browser'],
-        aggregations={'clicks': 'sum', 'cost': 'sum'}
-    ) |
-    Crawl(
-        region_schemas=[RelationSchema(['device'])],
-        slice_transformations=[cost_per_click],
-        predicate_func=my_predicate,
-        dimensions=RelationSchema(['device', 'browser'])
-    )
-)
+    # Or, if you use Anaconda/Miniconda
+    conda install pandas
+    ```
 
-# 4. Execute the pipeline
-final_result = pipeline(df)
+---
 
-print(final_result)
+## How to Run the Examples
+
+Once you have set up the project and installed the dependency, you can run the examples from your terminal.
+
+1.  Navigate to the directory where you saved the files.
+2.  Execute the desired example script:
+
+    ```bash
+    # To run the full, end-to-end analysis example
+    python3 ad_performance_analysis_example.py
+
+    # To run the focused example on the RelationSpace
+    python3 relation_space_example.py
+    ```
+
+    *Note: If `python3` doesn't work, your system may use `python` as the command for Python 3.*
