@@ -117,15 +117,11 @@ class Represent(MraOperatorBase):
         print(f"  > Representing RelationSpace into slices...")
         slice_relation = SliceRelation(dimensions=data.dimensions)
 
-        # Iterate through every combination of region and feature schemas
         for r_schema in self.region_schemas:
             for f_schema in self.feature_schemas:
-                # Determine the target dimensional schema for lookup in the RelationSpace
-                # As per the paper: T = r_schema U f_schema, K = T intersect D
                 target_attributes = r_schema.attributes + f_schema.attributes
                 target_dim_attributes = [attr for attr in target_attributes if attr in data.dimensions.attributes]
                 target_dim_schema = RelationSchema(target_dim_attributes)
-
                 relation_to_partition = data.get_relation(target_dim_schema)
 
                 if relation_to_partition is None:
@@ -134,22 +130,23 @@ class Represent(MraOperatorBase):
                 region_cols = list(r_schema.attributes)
                 feature_cols = list(f_schema.attributes)
 
-                # Ensure all required columns exist in the dataframe
                 if not all(col in relation_to_partition.columns for col in region_cols + feature_cols):
                     continue
-
-                # Group by the region columns to create slices
-                grouped = relation_to_partition.groupby(region_cols)
-                for region_values, group_df in grouped:
-                    # Ensure region_values is always a tuple, even for a single column
-                    if not isinstance(region_values, tuple):
-                        region_values = (region_values,)
-
-                    region_dict = dict(zip(region_cols, region_values))
-                    region_tuple = create_relation_tuple(region_dict)
-
-                    feature_data = group_df[feature_cols].copy().reset_index(drop=True)
+                
+                # Handle the special case for the empty region (reference data)
+                if not region_cols:
+                    region_tuple = create_relation_tuple({})
+                    feature_data = relation_to_partition[feature_cols].copy().reset_index(drop=True)
                     slice_relation.add_slice_tuple(region_tuple, f_schema, feature_data)
+                else:
+                    grouped = relation_to_partition.groupby(region_cols)
+                    for region_values, group_df in grouped:
+                        if not isinstance(region_values, tuple):
+                            region_values = (region_values,)
+                        region_dict = dict(zip(region_cols, region_values))
+                        region_tuple = create_relation_tuple(region_dict)
+                        feature_data = group_df[feature_cols].copy().reset_index(drop=True)
+                        slice_relation.add_slice_tuple(region_tuple, f_schema, feature_data)
 
         return slice_relation
 
@@ -172,8 +169,18 @@ class SliceTransform(MraOperatorBase):
 
         # Create a dictionary for quick lookup of transformations by their required input schema
         transform_map = {t.feature_schema: t for t in self.slice_transformations}
-
         transformed_schemas = set(transform_map.keys())
+
+        empty_region_tuple = create_relation_tuple({})
+        reference_features = data.data.get(empty_region_tuple, {})
+        
+        # Set reference data on all transformation objects before processing
+        for transformation in self.slice_transformations:
+            if transformation.require_reference_data:
+                # Find the corresponding reference feature table
+                ref_data = reference_features.get(transformation.feature_schema)
+                # Set it on the transformer instance
+                transformation.reference_data = ref_data
 
         for region, features in data.data.items():
             # Keep track of which feature tables for this region have been transformed
@@ -284,9 +291,22 @@ class Crawl(MraOperatorBase):
         self.feature_schemas = [t.feature_schema for t in self.slice_transformations]
         self.predicate_func = predicate_func
         self.dimensions = dimensions
+
+        # The logic for handling the empty schema is now inside Crawl.
+        represent_schemas = self.region_schemas[:] # Make a copy
+        
+        # Check if any transformation requires reference data.
+        needs_ref_data = any(t.require_reference_data for t in self.slice_transformations)
+        empty_schema = RelationSchema([])
+        
+        # If reference data is needed, automatically add the empty schema
+        # to the list of schemas for the Represent operator.
+        if needs_ref_data and empty_schema not in represent_schemas:
+            represent_schemas.append(empty_schema)
+
         self.internal_pipeline = (
             Represent(
-                region_schemas=self.region_schemas,
+                region_schemas=represent_schemas,
                 feature_schemas=self.feature_schemas
             ) |
             SliceTransform(
