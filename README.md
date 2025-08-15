@@ -16,12 +16,14 @@ The project is organized into a set of core modules and corresponding example di
 
 2.  **`mra_operators.py`**: Contains the logic for all the MRA operators (`represent`, `flatten`, etc.). It is designed to support a chainable, pipe-based (`|`) syntax.
 
-3.  **`slice_transformation.py`**: A dedicated module for defining specific, reusable transformation functions that can be applied to feature tables within a `SliceRelation`.
+3.  **`slice_transformations/`**: A directory (Python package) containing modules with specific, reusable transformation functions.
+    -   **`slice_transformation.py`**: Defines general-purpose transformations.
+    -   **`ratio_transformation.py`**: Defines transformations for calculating ratios.
 
 ### Example Directories
 
 -   **`mra_data_examples/`**: Contains scripts that provide practical demonstrations of how to create and use the core data structures from `mra_data.py`.
--   **`mra_transformation_examples/`**: Contains scripts that showcase how to use the functions defined in `slice_transformation.py`.
+-   **`mra_transformation_examples/`**: Contains scripts that showcase how to use the functions defined in the `slice_transformations/` package.
 -   **`mra_pipeline_examples/`**: Contains scripts demonstrating end-to-end analytical workflows, chaining multiple operators and transformations together to solve a problem.
 
 ---
@@ -63,8 +65,11 @@ Because the project is structured as a collection of modules, you must run the e
     # To run an example from the data examples directory
     python3 -m mra_data_examples.relation_space_example
 
+    # To run an example from the transformation examples directory
+    python3 -m mra_transformation_examples.some_transformation_example
+
     # To run an example from the pipeline examples directory
     python3 -m mra_pipeline_examples.some_pipeline_example
     ```
 
-    *Note: Replace `some_pipeline_example` with the actual name of the file you wish to run (without the `.py` extension).*
+    *Note: Replace `some_..._example` with the actual name of the file you wish to run (without the `.py` extension).*
