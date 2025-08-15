@@ -6,25 +6,23 @@ The core idea is to move beyond traditional flat-table analysis by introducing d
 
 ---
 
-## Core Concepts
-
-MRA introduces two new data abstractions to enable its powerful analytical capabilities:
-
--   **`RelationSpace`**: A container for managing a collection of relations (represented here as pandas DataFrames) defined at different granularities. It uses a "dimensional schema" to uniquely identify each relation, avoiding the need to manage numerous individual tables manually.
-
--   **`SliceRelation`**: A nested data structure that organizes data around specific entities (called "regions"). Each row in a `SliceRelation` is a "slice tuple" containing a region and its associated set of relation-valued features. This structure is ideal for performing complex, per-entity analyses like time-series anomaly detection or statistical modeling.
-
----
-
 ## Project Structure
 
-The project is organized into two core modules and several example scripts:
+The project is organized into a set of core modules and corresponding example directories:
 
-1.  **`mra_data.py`**: This file contains the core data structures of the MRA prototype. It defines the `RelationSpace` and `SliceRelation` classes, as well as the underlying types like `RelationSchema` and `RelationTuple`.
+### Core Modules
 
-2.  **`mra_operators.py`**: This file contains the logic for all the MRA operators (`represent`, `flatten`, `slice_transform`, `slice_select`, etc.). It is designed to support a chainable, pipe-based (`|`) syntax for creating readable analytical workflows.
+1.  **`mra_data.py`**: Contains the core data structures of the MRA prototype. It defines `RelationSpace`, `SliceRelation`, and the underlying types like `RelationSchema` and `RelationTuple`.
 
-3.  **Example Scripts**: Files like `ad_performance_analysis_example.py` and `relation_space_example.py` provide practical demonstrations of how to use the data structures and operators to perform analysis.
+2.  **`mra_operators.py`**: Contains the logic for all the MRA operators (`represent`, `flatten`, etc.). It is designed to support a chainable, pipe-based (`|`) syntax.
+
+3.  **`slice_transformation.py`**: A dedicated module for defining specific, reusable transformation functions that can be applied to feature tables within a `SliceRelation`.
+
+### Example Directories
+
+-   **`mra_data_examples/`**: Contains scripts that provide practical demonstrations of how to create and use the core data structures from `mra_data.py`.
+-   **`mra_transformation_examples/`**: Contains scripts that showcase how to use the functions defined in `slice_transformation.py`.
+-   **`mra_pipeline_examples/`**: Contains scripts demonstrating end-to-end analytical workflows, chaining multiple operators and transformations together to solve a problem.
 
 ---
 
@@ -34,17 +32,16 @@ The project is organized into two core modules and several example scripts:
 
 To run this project, you will need:
 
--   **Python 3**: The code is written for Python 3. On many systems, the command to run it is `python3`.
--   **pandas**: This is the only external library required. It is used for all data manipulation.
+-   **Python 3**: The code is written for Python 3.
+-   **pandas**: This is the only external library required.
 
 ### Installation
 
-1.  **Clone or download the project files.** Make sure you have `mra_data.py`, `mra_operators.py`, and the example scripts you wish to run.
+1.  **Clone or download the project files.** Ensure you have the core modules and the example directories.
 
-2.  **Place all files in the same directory.** This is necessary because the example scripts and operator module import the data module directly.
+2.  **Set up your project directory.** All the `mra_*` modules and directories should be at the same level in your project. Your project's root directory should be in the Python path.
 
-3.  **Install pandas.** If you do not have pandas installed, you can install it using `pip` or `conda`:
-
+3.  **Install pandas.** If you do not have pandas installed:
     ```bash
     # Using pip
     pip install pandas
@@ -57,17 +54,17 @@ To run this project, you will need:
 
 ## How to Run the Examples
 
-Once you have set up the project and installed the dependency, you can run the examples from your terminal.
+Because the project is structured as a collection of modules, you must run the examples from your project's **root directory** using the `python3 -m` flag. This ensures that Python can correctly handle the imports between the different files.
 
-1.  Navigate to the directory where you saved the files.
-2.  Execute the desired example script:
+1.  Open your terminal and navigate to the root directory of the MRA project.
+2.  Execute the desired example script using the following format:
 
     ```bash
-    # To run the full, end-to-end analysis example
-    python3 ad_performance_analysis_example.py
+    # To run an example from the data examples directory
+    python3 -m mra_data_examples.relation_space_example
 
-    # To run the focused example on the RelationSpace
-    python3 relation_space_example.py
+    # To run an example from the pipeline examples directory
+    python3 -m mra_pipeline_examples.some_pipeline_example
     ```
 
-    *Note: If `python3` doesn't work, your system may use `python` as the command for Python 3.*
+    *Note: Replace `some_pipeline_example` with the actual name of the file you wish to run (without the `.py` extension).*
