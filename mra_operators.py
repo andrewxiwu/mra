@@ -281,21 +281,13 @@ class Crawl(MraOperatorBase):
                  dimensions: RelationSchema):
         self.region_schemas = region_schemas
         self.slice_transformations = slice_transformations
+        self.feature_schemas = [t.feature_schema for t in self.slice_transformations]
         self.predicate_func = predicate_func
         self.dimensions = dimensions
-
-    def _execute(self, data: RelationSpace) -> RelationSpace:
-        if not isinstance(data, RelationSpace):
-            raise TypeError("Crawl expects a RelationSpace as its initial input.")
-
-        # Step 1: Determine the feature schemas required by the transformations.
-        feature_schemas = [t.feature_schema for t in self.slice_transformations]
-
-        # Build the internal pipeline using the | operator
-        internal_pipeline = (
+        self.internal_pipeline = (
             Represent(
                 region_schemas=self.region_schemas,
-                feature_schemas=feature_schemas
+                feature_schemas=self.feature_schemas
             ) |
             SliceTransform(
                 slice_transformations=self.slice_transformations,
@@ -309,5 +301,8 @@ class Crawl(MraOperatorBase):
             )
         )
 
-        # Execute the composed pipeline on the input data
-        return internal_pipeline(data)
+    def _execute(self, data: RelationSpace) -> RelationSpace:
+        if not isinstance(data, RelationSpace):
+            raise TypeError("Crawl expects a RelationSpace as its initial input.")
+
+        return self.internal_pipeline(data)
