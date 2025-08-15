@@ -3,7 +3,7 @@ from typing import List
 
 # We assume mra_data.py and slice_transformations.py are accessible
 from mra_data import RelationSchema
-from slice_transformation import SliceTransformationBase
+from slice_transformations.slice_transformation import SliceTransformationBase
 
 class RatioTransformation(SliceTransformationBase):
     """

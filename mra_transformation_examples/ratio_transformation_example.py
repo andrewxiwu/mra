@@ -3,7 +3,7 @@ import pandas as pd
 # We assume mra_data.py and slice_transformations.py are accessible
 # in the same directory or in the Python path.
 from mra_data import RelationSchema
-from ratio_transformation import RatioTransformation
+from slice_transformations.ratio_transformation import RatioTransformation
 
 def run_ratio_example():
     """
