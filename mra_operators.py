@@ -6,7 +6,7 @@ from itertools import chain, combinations
 # Assuming you have a module named 'mra_data' with these classes defined.
 # This file should be in the same directory.
 from mra_data import RelationSpace, SliceRelation, RelationSchema, create_relation_tuple, RelationTuple
-from slice_transformation import SliceTransformationBase
+from slice_transformations.slice_transformation import SliceTransformationBase
 
 # ==============================================================================
 # Type Alias for Data

@@ -5,7 +5,7 @@ from typing import Dict
 # Import the MRA operators and data structures
 from mra_operators import CreateRelationSpaceByCube, Crawl
 from mra_data import RelationSpace, SliceRelation, RelationSchema, RelationTuple
-from ratio_transformation import RatioTransformation
+from slice_transformations.ratio_transformation import RatioTransformation
 
 def run_crawl_example():
     """
