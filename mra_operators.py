@@ -231,6 +231,42 @@ class SliceSelect(MraOperatorBase):
         return new_slice_relation
 
 
+class SliceProject(MraOperatorBase):
+    """
+    Filters a SliceRelation to keep only the specified region and feature schemas.
+    """
+    def __init__(self, region_schemas: List[RelationSchema], feature_schemas: List[RelationSchema] = None):
+        self.region_schemas = region_schemas
+        self.feature_schemas = feature_schemas
+
+    def _execute(self, data: SliceRelation) -> SliceRelation:
+        if not isinstance(data, SliceRelation):
+            raise TypeError("SliceProject expects a SliceRelation object.")
+        
+        print(f"  > Projecting slices to keep only specified regions...")
+        new_slice_relation = SliceRelation(dimensions=data.dimensions)
+        
+        # Create a set for faster lookup
+        allowed_region_schemas = {RelationSchema(list(rs.attributes)) for rs in self.region_schemas}
+
+        for region, features in data.data.items():
+            # Determine the schema of the current region
+            current_region_schema = RelationSchema([k for k, v in region])
+            
+            # Keep the slice tuple only if its region schema is in the allowed list
+            if current_region_schema in allowed_region_schemas:
+                # If feature_schemas is None, keep all features. Otherwise, filter them.
+                features_to_keep = features
+                if self.feature_schemas is not None:
+                    allowed_feature_schemas = set(self.feature_schemas)
+                    features_to_keep = {fs: df for fs, df in features.items() if fs in allowed_feature_schemas}
+
+                for f_schema, f_df in features_to_keep.items():
+                    new_slice_relation.add_slice_tuple(region, f_schema, f_df)
+
+        return new_slice_relation
+
+
 class Flatten(MraOperatorBase):
     """
     Converts a SliceRelation back into a RelationSpace.
