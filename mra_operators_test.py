@@ -9,9 +9,8 @@ from mra_operators import SliceTransform
 
 # A dummy transformation class for testing purposes
 class MockTransformation:
-    def __init__(self, in_schema, out_schema):
-        self.feature_schema = in_schema
-        self.output_schema = out_schema
+    def __init__(self, feature_schema):
+        self.feature_schema = feature_schema
         self.require_reference_data = False
 
     def __call__(self, df):
@@ -62,7 +61,7 @@ class SliceTransformDrillDownTest(unittest.TestCase):
         # Create the SliceTransform operator with the drill-down set.
         transform_op = SliceTransform(
             slice_transformations=[
-                MockTransformation(self.cost_schema, self.cost_schema)
+                MockTransformation(self.cost_schema)
             ],
             dimensions=self.slice_relation.dimensions,
             drill_down_regions=drill_down_parents

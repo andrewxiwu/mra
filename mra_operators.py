@@ -1,6 +1,6 @@
 import pandas as pd
 from abc import ABC, abstractmethod
-from typing import Union, List, Callable, Dict, Any, Tuple
+from typing import Union, List, Callable, Dict, Any, Set, Tuple
 from itertools import chain, combinations
 
 # Assuming you have a module named 'mra_data' with these classes defined.
