@@ -156,11 +156,49 @@ class SliceTransform(MraOperatorBase):
     Transforms feature tables within a SliceRelation by applying a sequence
     of slice transformations.
     """
-    def __init__(self, slice_transformations: List[SliceTransformationBase], dimensions: RelationSchema):
+    def __init__(
+            self,
+            slice_transformations: List[SliceTransformationBase],
+            dimensions: RelationSchema,
+            drill_down_regions: Set[RelationTuple] = None,
+    ):
         self.slice_transformations = slice_transformations
         self.dimensions = dimensions
+        self.drill_down_regions = drill_down_regions
 
-    def _execute(self, data: SliceRelation) -> SliceRelation:
+    def _is_descendant(
+            self,
+            region_to_check: RelationTuple,
+            parent_regions: Set[RelationTuple]
+    ) -> bool:
+        """
+        Checks if a region is a valid descendant of the parent regions.
+
+        A region is a descendant if all of its k-1 projections exist
+        in the parent set.
+        """
+        components = list(region_to_check)
+        k = len(components)
+
+        # A region with 0 components (the empty region) is always valid.
+        if k == 0:
+            return True
+
+        # For any non-empty region, all its projections must be in the set.
+        for i in range(k):
+            projection_components = components[:i] + components[i+1:]
+            parent_candidate = create_relation_tuple(
+                dict(projection_components))
+            
+            if parent_candidate not in parent_regions:
+                return False
+        
+        return True
+
+    def _execute(
+            self,
+            data: SliceRelation
+    ) -> SliceRelation:
         if not isinstance(data, SliceRelation):
             raise TypeError("SliceTransform expects a SliceRelation object.")
 
@@ -183,6 +221,13 @@ class SliceTransform(MraOperatorBase):
                 transformation.reference_data = ref_data
 
         for region, features in data.data.items():
+            if region == empty_region_tuple:
+                continue
+
+            if self.drill_down_regions is not None:
+                if not self._is_descendant(region, self.drill_down_regions):
+                    continue
+
             # Keep track of which feature tables for this region have been transformed
             processed_schemas = set()
 
