@@ -37,11 +37,34 @@ class RelationSpace:
         self._relations: Dict[RelationSchema, pd.DataFrame] = {}
 
     def add_relation(self, relation: pd.DataFrame, dimensional_schema: RelationSchema):
-        """Adds a relation to the space, indexed by its dimensional schema."""
+        """
+        Adds a relation to the space, indexed by its dimensional schema.
+        
+        This method enforces a key MRA rule: the intersection of the relation's
+        columns with the space's dimensions must be exactly equal to the
+        dimensional_schema provided.
+        
+        Raises:
+            ValueError: If the relation's schema violates the MRA rule.
+        """
+        relation_columns = set(relation.columns)
+        space_dimensions = set(self.dimensions.attributes)
+        
+        # Calculate the actual intersection
+        intersection = relation_columns.intersection(space_dimensions)
+        
+        # The set of attributes in the provided dimensional_schema
+        expected_intersection = set(dimensional_schema.attributes)
+        
+        # Enforce the MRA rule
+        if intersection != expected_intersection:
+            raise ValueError(
+                f"Invalid relation for dimensional schema {dimensional_schema.attributes}.\n"
+                f"Intersection of relation columns {list(relation_columns)} with space dimensions {list(space_dimensions)} "
+                f"resulted in {list(intersection)}, but expected {list(expected_intersection)}."
+            )
+            
         self._relations[dimensional_schema] = relation
-
-        # TODO: We need to check that the relation schema intersects with dimensions
-        # will be exactly the `dimensional_schema`.
 
     def get_relation(self, dimensional_schema: RelationSchema) -> pd.DataFrame:
         """Retrieves a relation by its dimensional schema."""
