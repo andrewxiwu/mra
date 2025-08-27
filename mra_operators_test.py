@@ -59,6 +59,11 @@ class SliceTransformDrillDownTest(unittest.TestCase):
             self.chrome_region
         }
 
+        drill_down_parents: Set[RelationTuple] = {
+            self.pixel_region,
+            self.chrome_region
+        }
+
         transform_op = SliceTransform(
             slice_transformations=[
                 MockTransformation(self.cost_schema)
