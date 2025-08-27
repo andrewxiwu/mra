@@ -8,7 +8,7 @@ from mra_data import (SliceRelation, RelationSchema, RelationTuple,
 from mra_operators import SliceTransform
 
 # A dummy transformation class for testing purposes
-class CopyTransformation:
+class MockTransformation:
     def __init__(self, feature_schema):
         self.feature_schema = feature_schema
         self.require_reference_data = False
@@ -17,98 +17,67 @@ class CopyTransformation:
         # The transformation logic itself doesn't matter for this test
         return df.copy()
 
-class SliceTransformTest(unittest.TestCase):
+class SliceTransformDrillDownTest(unittest.TestCase):
     """
-    Test suite for the SliceTransform operator.
+    Test suite for the drill-down functionality of the SliceTransform operator.
     """
 
-    def test_drill_down_bfs(self):
-        """
-        Tests drill-down for a Breadth-First Search (BFS) scenario where
-        all parent schemas are known.
-        """
-        # --- Test Setup ---
-        slice_relation = SliceRelation(
+    def setUp(self):
+        """Set up a sample SliceRelation for the tests."""
+        self.slice_relation = SliceRelation(
             dimensions=RelationSchema(['Device', 'Browser']))
-        cost_schema = RelationSchema(['Cost'])
         
-        pixel_region = create_relation_tuple({'Device': 'Pixel'})
-        chrome_region = create_relation_tuple({'Browser': 'Chrome'})
+        # Schemas
+        self.cost_schema = RelationSchema(['Cost'])
         
-        pixel_chrome = create_relation_tuple(
+        # Level 1 Regions
+        self.pixel_region = create_relation_tuple({'Device': 'Pixel'})
+        self.chrome_region = create_relation_tuple({'Browser': 'Chrome'})
+        self.safari_region = create_relation_tuple({'Browser': 'Safari'})
+
+        # Level 2 Regions (combinations of level 1)
+        self.pixel_chrome = create_relation_tuple(
             {'Device': 'Pixel', 'Browser': 'Chrome'})
-        pixel_safari = create_relation_tuple(
+        self.pixel_safari = create_relation_tuple(
             {'Device': 'Pixel', 'Browser': 'Safari'})
             
-        slice_relation.add_slice_tuple(
-            pixel_chrome, cost_schema, pd.DataFrame({'Cost': [100]}))
-        slice_relation.add_slice_tuple(
-            pixel_safari, cost_schema, pd.DataFrame({'Cost': [200]}))
+        # Populate the slice relation
+        self.slice_relation.add_slice_tuple(
+            self.pixel_chrome, self.cost_schema, pd.DataFrame({'Cost': [100]}))
+        self.slice_relation.add_slice_tuple(
+            self.pixel_safari, self.cost_schema, pd.DataFrame({'Cost': [200]}))
+
+    def test_drill_down_logic(self):
+        """
+        Tests that SliceTransform correctly applies the drill-down filter.
+        """
+        # Define the set of valid "parent" regions for the drill-down.
+        # Note that (Browser=Safari) is intentionally excluded.
 
         drill_down_parents: Set[RelationTuple] = {
-            pixel_region,
-            chrome_region
+            self.pixel_region,
+            self.chrome_region
         }
-        # In BFS, we provide all possible parent schemas
-        parent_schemas: Set[RelationSchema] = {
-            RelationSchema(['Device']),
-            RelationSchema(['Browser'])
-        }
-        # --- End Test Setup ---
 
         transform_op = SliceTransform(
-            slice_transformations=[CopyTransformation(cost_schema)],
-            dimensions=slice_relation.dimensions,
-            drill_down_regions=drill_down_parents,
-            parent_region_schemas=parent_schemas
+            slice_transformations=[
+                MockTransformation(self.cost_schema)
+            ],
+            dimensions=self.slice_relation.dimensions,
+            drill_down_regions=drill_down_parents
         )
-        result = transform_op(slice_relation)
+
+        # Execute the transformation
+        result_slice_relation = transform_op(self.slice_relation)
 
         # Assertions
-        self.assertIn(pixel_chrome, result.data)
-        self.assertNotIn(pixel_safari, result.data)
+        # 1. The valid descendant region (Pixel, Chrome) SHOULD be in the result.
+        #    Its parents are (Pixel) and (Chrome), which are both in the set.
+        self.assertIn(self.pixel_chrome, result_slice_relation.data)
 
-    def test_drill_down_dfs(self):
-        """
-        Tests drill-down for a Depth-First Search (DFS) scenario where
-        only a subset of parent schemas is relevant.
-        """
-        # --- Test Setup ---
-        slice_relation = SliceRelation(
-            dimensions=RelationSchema(['Device', 'Browser']))
-        cost_schema = RelationSchema(['Cost'])
-        
-        pixel_region = create_relation_tuple({'Device': 'Pixel'})
-        
-        pixel_chrome = create_relation_tuple(
-            {'Device': 'Pixel', 'Browser': 'Chrome'})
-        pixel_safari = create_relation_tuple(
-            {'Device': 'Pixel', 'Browser': 'Safari'})
-            
-        slice_relation.add_slice_tuple(
-            pixel_chrome, cost_schema, pd.DataFrame({'Cost': [100]}))
-        slice_relation.add_slice_tuple(
-            pixel_safari, cost_schema, pd.DataFrame({'Cost': [200]}))
-
-        # In a DFS-style exploration, we might only have processed the
-        # 'Device' level parents so far.
-        drill_down_parents: Set[RelationTuple] = {pixel_region}
-        parent_schemas: Set[RelationSchema] = {RelationSchema(['Device'])}
-        # --- End Test Setup ---
-
-        transform_op = SliceTransform(
-            slice_transformations=[CopyTransformation(cost_schema)],
-            dimensions=slice_relation.dimensions,
-            drill_down_regions=drill_down_parents,
-            parent_region_schemas=parent_schemas
-        )
-        result = transform_op(slice_relation)
-
-        # The logic should only check the projection to 'Device'. Since
-        # the projection to 'Browser' is not in `parent_schemas`, it's
-        # ignored. Both regions should pass this check.
-        self.assertIn(pixel_chrome, result.data)
-        self.assertIn(pixel_safari, result.data)
+        # 2. The invalid descendant region (Pixel, Safari) should NOT be in the result.
+        #    Its parent (Safari) is not in the drill-down set.
+        self.assertNotIn(self.pixel_safari, result_slice_relation.data)
 
 if __name__ == '__main__':
     unittest.main()
