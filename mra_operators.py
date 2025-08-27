@@ -150,6 +150,7 @@ class Represent(MraOperatorBase):
 
         return slice_relation
 
+
 class SliceTransform(MraOperatorBase):
     def __init__(self,
                  slice_transformations: List[SliceTransformationBase],
@@ -231,106 +232,6 @@ class SliceTransform(MraOperatorBase):
             for f_schema, f_df in reference_features.items():
                 new_slice_relation.add_slice_tuple(
                     empty_region_tuple, f_schema, f_df)
-
-        return new_slice_relation
-
-
-class SliceTransform(MraOperatorBase):
-    """
-    Transforms feature tables within a SliceRelation by applying a sequence
-    of slice transformations.
-    """
-    def __init__(
-            self,
-            slice_transformations: List[SliceTransformationBase],
-            dimensions: RelationSchema,
-            drill_down_regions: Set[RelationTuple] = None,
-            parent_region_schemas: Set[RelationSchema] = None,
-    ):
-        self.slice_transformations = slice_transformations
-        self.dimensions = dimensions
-        self.drill_down_regions = drill_down_regions
-        self.parent_region_schemas = parent_region_schemas
-
-    def _is_descendant(
-            self,
-            region_to_check: RelationTuple,
-            parent_regions: Set[RelationTuple],
-            parent_schemas: Set[RelationSchema]
-    ) -> bool:
-        """
-        Checks if a region is a valid descendant based on its parents'
-        schemas and values.
-        """
-        components = list(region_to_check)
-        k = len(components)
-
-        if k == 0:
-            return True
-
-        for i in range(k):
-            projection_components = components[:i] + components[i+1:]
-            
-            proj_schema = RelationSchema(
-                [key for key, val in projection_components])
-            if proj_schema not in parent_schemas:
-                continue
-
-            parent_candidate = create_relation_tuple(
-                dict(projection_components))
-            if parent_candidate not in parent_regions:
-                return False
-        
-        return True
-
-    def _execute(
-            self,
-            data: SliceRelation
-    ) -> SliceRelation:
-        if not isinstance(data, SliceRelation):
-            raise TypeError("SliceTransform expects a SliceRelation object.")
-
-        print("  > Transforming slices...")
-        new_slice_relation = SliceRelation(dimensions=self.dimensions)
-
-        transform_map = {t.feature_schema: t for t in
-                         self.slice_transformations}
-
-        empty_region_tuple = create_relation_tuple({})
-        reference_features = data.data.get(empty_region_tuple, {})
-        
-        for transformation in self.slice_transformations:
-            if transformation.require_reference_data:
-                ref_data = reference_features.get(
-                    transformation.feature_schema)
-                transformation.reference_data = ref_data
-
-        for region, features in data.data.items():
-            if region == empty_region_tuple:
-                continue
-
-            if (self.drill_down_regions is not None and
-                    self.parent_region_schemas is not None):
-                if not self._is_descendant(region, self.drill_down_regions,
-                                           self.parent_region_schemas):
-                    continue
-
-            processed_schemas = set()
-
-            for feature_schema, feature_df in features.items():
-                if feature_schema in transform_map:
-                    transformation = transform_map[feature_schema]
-                    transformed_df = transformation(feature_df.copy())
-                    output_schema = RelationSchema(
-                        list(transformed_df.columns))
-                    new_slice_relation.add_slice_tuple(
-                        region, output_schema, transformed_df)
-                    processed_schemas.add(feature_schema)
-
-            for feature_schema, feature_df in features.items():
-                if feature_schema not in processed_schemas:
-                    new_slice_relation.add_slice_tuple(
-                        region, feature_schema, feature_df.copy())
 
         return new_slice_relation
 
