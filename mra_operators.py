@@ -320,7 +320,8 @@ class Flatten(MraOperatorBase):
         return new_relation_space
 
 class Crawl(MraOperatorBase):
-    def __init__(self, region_schemas: List[RelationSchema],
+    def __init__(self,
+                 region_schemas: List[RelationSchema],
                  slice_transformations: List[SliceTransformation],
                  predicate_func: Callable[
                      [RelationTuple, Dict[RelationSchema, pd.DataFrame]], bool
