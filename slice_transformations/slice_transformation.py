@@ -5,7 +5,7 @@ from typing import List, Optional
 # We assume mra_data.py is in the same directory or accessible in the path
 from mra_data import RelationSchema
 
-class SliceTransformationBase(ABC):
+class SliceTransformation(ABC):
     """
     Abstract Base Class for all slice transformations (the tau function in the paper).
     """

@@ -6,7 +6,7 @@ from itertools import chain, combinations
 # Assuming you have a module named 'mra_data' with these classes defined.
 from mra_data import (RelationSpace, SliceRelation, RelationSchema,
                       create_relation_tuple, RelationTuple)
-from slice_transformations.slice_transformation import SliceTransformationBase
+from slice_transformations.slice_transformation import SliceTransformation
 
 # ==============================================================================
 # Type Alias for Data
@@ -134,7 +134,7 @@ class SliceTransform(MraOperatorBase):
     """
     def __init__(
             self,
-            slice_transformations: List[SliceTransformationBase],
+            slice_transformations: List[SliceTransformation],
             dimensions: RelationSchema,
             drill_down_regions: Set[RelationTuple] = None,
             parent_region_schemas: Set[RelationSchema] = None,
@@ -321,7 +321,7 @@ class Flatten(MraOperatorBase):
 
 class Crawl(MraOperatorBase):
     def __init__(self, region_schemas: List[RelationSchema],
-                 slice_transformations: List[SliceTransformationBase],
+                 slice_transformations: List[SliceTransformation],
                  predicate_func: Callable[
                      [RelationTuple, Dict[RelationSchema, pd.DataFrame]], bool
                  ],

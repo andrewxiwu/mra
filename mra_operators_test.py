@@ -6,11 +6,11 @@ from typing import Set
 from mra_data import (SliceRelation, RelationSchema, RelationTuple,
                       create_relation_tuple)
 from mra_operators import SliceTransform
-from slice_transformations.slice_transformation import SliceTransformationBase
+from slice_transformations.slice_transformation import SliceTransformation
 
 
 # A dummy transformation class for testing purposes
-class CopyTransformation(SliceTransformationBase):
+class CopyTransformation(SliceTransformation):
     def __init__(self, feature_schema):
         self._feature_schema = feature_schema
         super().__init__()
