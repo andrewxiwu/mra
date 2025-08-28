@@ -17,7 +17,7 @@ MraData = Union[pd.DataFrame, RelationSpace, SliceRelation]
 # Operator Base Class and Pipeline
 # ==============================================================================
 
-class MraOperatorBase(ABC):
+class MraOperator(ABC):
     @abstractmethod
     def _execute(self, data: MraData) -> MraData:
         pass
@@ -26,13 +26,13 @@ class MraOperatorBase(ABC):
         print(f"Executing {self.__class__.__name__}...")
         return self._execute(data)
 
-    def __or__(self, other: 'MraOperatorBase') -> 'Pipeline':
+    def __or__(self, other: 'MraOperator') -> 'Pipeline':
         if isinstance(other, Pipeline):
             return Pipeline([self] + other.operators)
         return Pipeline([self, other])
 
-class Pipeline(MraOperatorBase):
-    def __init__(self, operators: list[MraOperatorBase]):
+class Pipeline(MraOperator):
+    def __init__(self, operators: list[MraOperator]):
         self.operators = operators
 
     def _execute(self, data: MraData) -> MraData:
@@ -41,7 +41,7 @@ class Pipeline(MraOperatorBase):
             result = op(result)
         return result
 
-    def __or__(self, other: 'MraOperatorBase') -> 'Pipeline':
+    def __or__(self, other: 'MraOperator') -> 'Pipeline':
         if isinstance(other, Pipeline):
             return Pipeline(self.operators + other.operators)
         return Pipeline(self.operators + [other])
@@ -50,7 +50,7 @@ class Pipeline(MraOperatorBase):
 # Concrete Operator Implementations
 # ==============================================================================
 
-class CreateRelationSpaceByCube(MraOperatorBase):
+class CreateRelationSpaceByCube(MraOperator):
     def __init__(self, grouping_keys: List[str],
                  aggregations: Dict[str, Any]):
         self.grouping_keys = grouping_keys
@@ -80,7 +80,7 @@ class CreateRelationSpaceByCube(MraOperatorBase):
 
         return relation_space
 
-class Represent(MraOperatorBase):
+class Represent(MraOperator):
     def __init__(self, region_schemas: List[RelationSchema],
                  feature_schemas: List[RelationSchema]):
         self.region_schemas = region_schemas
@@ -127,7 +127,7 @@ class Represent(MraOperatorBase):
 
         return slice_relation
 
-class SliceTransform(MraOperatorBase):
+class SliceTransform(MraOperator):
     """
     Transforms feature tables within a SliceRelation by applying a sequence
     of slice transformations.
@@ -227,7 +227,7 @@ class SliceTransform(MraOperatorBase):
 
         return new_slice_relation
 
-class SliceSelect(MraOperatorBase):
+class SliceSelect(MraOperator):
     def __init__(self, predicate_func: Callable[
             [RelationTuple, Dict[RelationSchema, pd.DataFrame]], bool]):
         self.predicate_func = predicate_func
@@ -257,7 +257,7 @@ class SliceSelect(MraOperatorBase):
 
         return new_slice_relation
 
-class SliceProject(MraOperatorBase):
+class SliceProject(MraOperator):
     def __init__(self, region_schemas: List[RelationSchema],
                  feature_schemas: List[RelationSchema] = None):
         self.region_schemas = region_schemas
@@ -292,7 +292,7 @@ class SliceProject(MraOperatorBase):
 
         return new_slice_relation
 
-class Flatten(MraOperatorBase):
+class Flatten(MraOperator):
     def __init__(self, dimensions: RelationSchema):
         self.dimensions = dimensions
 
@@ -319,20 +319,25 @@ class Flatten(MraOperatorBase):
 
         return new_relation_space
 
-class Crawl(MraOperatorBase):
+
+class Crawl(MraOperator):
     def __init__(self,
                  region_schemas: List[RelationSchema],
                  slice_transformations: List[SliceTransformation],
                  predicate_func: Callable[
                      [RelationTuple, Dict[RelationSchema, pd.DataFrame]], bool
                  ],
-                 dimensions: RelationSchema):
+                 dimensions: RelationSchema,
+                 drill_down_regions: Set[RelationTuple] = None,
+                 parent_region_schemas: Set[RelationSchema] = None):
         self.region_schemas = region_schemas
         self.slice_transformations = slice_transformations
         self.feature_schemas = [t.feature_schema for t in
                                 self.slice_transformations]
         self.predicate_func = predicate_func
         self.dimensions = dimensions
+        self.drill_down_regions = drill_down_regions
+        self.parent_region_schemas = parent_region_schemas
 
         represent_schemas = self.region_schemas[:]
         needs_ref_data = any(t.require_reference_data for t in
@@ -348,7 +353,9 @@ class Crawl(MraOperatorBase):
             ) |
             SliceTransform(
                 slice_transformations=self.slice_transformations,
-                dimensions=self.dimensions
+                dimensions=self.dimensions,
+                drill_down_regions=self.drill_down_regions,
+                parent_region_schemas=self.parent_region_schemas
             ) |
             SliceSelect(
                 predicate_func=self.predicate_func
